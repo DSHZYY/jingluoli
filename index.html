@@ -68,7 +68,7 @@
   <div class="sub">16 栋 · 2 单元 · 18 层 · 4 户 —— 进来就有一间</div>
   <div class="card">
     <label>输入你的 B 站 ID 或昵称</label>
-    <input id="name" placeholder="例如：DSH里的Flash在运营" autocomplete="off" maxlength="20">
+    <input id="name" placeholder="例如：你的B站昵称" autocomplete="off" maxlength="20">
     <button onclick="claim()">领取我的房号</button>
     <div class="tip">房号按名字算，<b>同一个名字永远同一间</b>，不重号、不能改。</div>
   </div>
@@ -135,13 +135,16 @@
 
 <script>
 const VIDEO="https://www.bilibili.com/video/BV1EUWH6pEeR";
-const RESIDENTS=[["天灵珠","10-2-1402"],["sxdsd","10-1-0604"],["墨竹TY","10-2-1102"],["xxy01","16-1-0603"],["星星云踏月留香","12-1-1701"]];
+const ME_ROOM=["DSH里的Flash在运营","7-1-0702"];   // UP 主自己，7 栋 7 楼
+const RESIDENTS=[ME_ROOM,["天灵珠","10-2-1402"],["sxdsd","10-1-0604"],["墨竹TY","10-2-1102"],["xxy01","16-1-0603"],["星星云踏月留香","12-1-1701"]];
 function hash(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h;}
 let me=null;
 async function claim(){
   const raw=document.getElementById('name').value.trim();
   if(!raw){ alert('先写个名字'); return; }
   if(raw.length>20){ alert('名字最多 20 个字'); return; }
+  const norm=t=>t.toLowerCase().replace(/\s+/g,'');
+  if(norm(raw)===norm(ME_ROOM[0])){ alert('这是 UP 主自己的房间（7 栋 7 楼），别抢😡'); return; }
   try{
     const r=await fetch('/api/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:raw})});
     const d=await r.json();
@@ -152,7 +155,8 @@ async function claim(){
     const ls=JSON.parse(localStorage.getItem('jl_list')||'null')||RESIDENTS.slice();
     if(ls.some(([n])=>n.toLowerCase()===raw.toLowerCase())){ alert('这个名字已经有人领了'); return; }
     const h=hash(raw.toLowerCase().replace(/\s+/g,''));
-    const b=(h%16)+1,u=((h>>>5)%2)+1,f=((h>>>8)%18)+1,r=((h>>>13)%4)+1;
+    let b=(h%16)+1,u=((h>>>5)%2)+1,f=((h>>>8)%18)+1,r=((h>>>13)%4)+1;
+    if(`${b}-${u}-${String(f).padStart(2,'0')}${String(r).padStart(2,'0')}`===ME_ROOM[1]){ b=13; }
     me={name:raw,b,u,f,r,no:`${b}-${u}-${String(f).padStart(2,'0')}${String(r).padStart(2,'0')}`};
     ls.push([raw,me.no]); RESIDENTS=ls; localStorage.setItem('jl_list',JSON.stringify(ls));
     const box=document.getElementById('sample'); box.innerHTML='';
