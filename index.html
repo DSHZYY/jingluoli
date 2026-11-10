@@ -67,17 +67,19 @@
   <h1>鲸落里 · 入住登记</h1>
   <div class="sub">16 栋 · 2 单元 · 18 层 · 4 户 —— 进来就有一间</div>
   <div class="card">
+    <div style="font-size:13px;color:#a9c6d6;margin-bottom:8px">已经搬进来的 <span id="cnt" style="color:#ffd980"></span></div>
+    <div class="list" id="sample"></div>
+    <div class="tip">在视频评论区报房号，我就把你写进这个名单。</div>
+  </div>
+
+  <div class="card">
     <label>输入你的 B 站 ID 或昵称</label>
     <input id="name" placeholder="例如：你的B站昵称" autocomplete="off" maxlength="20">
     <button onclick="claim()">领取我的房号</button>
     <div class="tip">房号按名字算，<b>同一个名字永远同一间</b>，不重号、不能改。</div>
   </div>
 
-  <div class="card">
-    <div style="font-size:13px;color:#a9c6d6;margin-bottom:8px">已经搬进来的</div>
-    <div class="list" id="sample"></div>
-    <div class="tip">在视频评论区报房号，我就把你写进这个名单。</div>
-  </div>
+
 
   <div class="card">
     <div class="stat">
@@ -160,7 +162,8 @@ async function claim(){
     me={name:raw,b,u,f,r,no:`${b}-${u}-${String(f).padStart(2,'0')}${String(r).padStart(2,'0')}`};
     ls.push([raw,me.no]); RESIDENTS=ls; localStorage.setItem('jl_list',JSON.stringify(ls));
     const box=document.getElementById('sample'); box.innerHTML='';
-    RESIDENTS.slice().reverse().forEach(([n,no])=>{const d=document.createElement('div');d.className='item';
+    const cnt=document.getElementById('cnt'); if(cnt) cnt.textContent='· '+RESIDENTS.length+' 户';
+  RESIDENTS.slice().reverse().forEach(([n,no])=>{const d=document.createElement('div');d.className='item';
       d.innerHTML='<span>'+n+'</span><span>'+no+'</span>';box.appendChild(d);});
   }
   document.getElementById('no').textContent=me.no;
@@ -223,6 +226,7 @@ async function loadResidents(){
     RESIDENTS=(d.list||[]).slice();
   }catch(e){ RESIDENTS=JSON.parse(localStorage.getItem('jl_list')||'null')||[["天灵珠","10-2-1402"],["sxdsd","10-1-0604"]]; }
   const box=document.getElementById('sample'); box.innerHTML='';
+  const cnt=document.getElementById('cnt'); if(cnt) cnt.textContent='· '+RESIDENTS.length+' 户';
   RESIDENTS.slice().reverse().forEach(([n,no])=>{
     const d=document.createElement('div'); d.className='item';
     d.innerHTML='<span>'+n+'</span><span>'+no+'</span>'; box.appendChild(d);
