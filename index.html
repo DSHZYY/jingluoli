@@ -137,8 +137,33 @@
 
 <script>
 const VIDEO="https://www.bilibili.com/video/BV1EUWH6pEeR";
-const ME_ROOM=["DSH里的Flash在运营","7-1-0702"];   // UP 主自己，7 栋 7 楼
-const RESIDENTS=[ME_ROOM,["天灵珠","10-2-1402"],["sxdsd","10-1-0604"],["墨竹TY","10-2-1102"],["xxy01","16-1-0603"],["星星云踏月留香","12-1-1701"],["妖神剑","13-1-1102"]];
+// 填充顺序：先把 7 栋填满，然后 1,2,3,4,5,6,8,...,16
+const ORDER=[7,1,2,3,4,5,6,8,9,10,11,12,13,14,15,16];
+const ME_NAME="DSH里的Flash在运营";
+// 名字 -> 序号（序号决定房号）；已登记的人把序号钉死不动
+const ASSIGNED=[
+  [ME_NAME,25],            // 7-1-0702
+  ["天灵珠",0],["sxdsd",1],["墨竹TY",2],["xxy01",3],["星星云踏月留香",4],
+  ["妖神剑",1769]           // 13-1-1102（他公开报过，不改）
+];
+function roomOfIndex(i){
+  const perB=144, perU=72;
+  const b=ORDER[Math.floor(i/perB)%ORDER.length];
+  const rem=i%perB;
+  const u=Math.floor(rem/perU)+1;
+  const f=Math.floor((rem%perU)/4)+1;
+  const r=(rem%4)+1;
+  return {b,u,f,r,no:`${b}-${u}-${String(f).padStart(2,'0')}${String(r).padStart(2,'0')}`};
+}
+function nextFreeIndex(used){
+  for(let i=0;i<2304;i++){ if(!used.has(i)) return i; }
+  return 0;
+}
+function buildResidents(list){
+  return list.map(([n,i])=>{ const h=roomOfIndex(i); return [n,h.no,h]; });
+}
+let ASSIGN=ASSIGNED.slice();
+let RESIDENTS=buildResidents(ASSIGN);
 function hash(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h;}
 let me=null;
 async function claim(){
@@ -153,17 +178,20 @@ async function claim(){
     if(!d.ok){ alert(d.err||'领取失败'); document.getElementById('name').focus(); document.getElementById('name').select(); return; }
     me={name:d.name,...d.house};
   }catch(e){
-    // 静态托管/离线：本地算 + 本地名单
-    const ls=JSON.parse(localStorage.getItem('jl_list')||'null')||RESIDENTS.slice();
-    if(ls.some(([n])=>n.toLowerCase()===raw.toLowerCase())){ alert('这个名字已经有人领了'); return; }
-    const h=hash(raw.toLowerCase().replace(/\s+/g,''));
-    let b=(h%16)+1,u=((h>>>5)%2)+1,f=((h>>>8)%18)+1,r=((h>>>13)%4)+1;
-    if(`${b}-${u}-${String(f).padStart(2,'0')}${String(r).padStart(2,'0')}`===ME_ROOM[1]){ b=13; }
-    me={name:raw,b,u,f,r,no:`${b}-${u}-${String(f).padStart(2,'0')}${String(r).padStart(2,'0')}`};
-    ls.push([raw,me.no]); RESIDENTS=ls; localStorage.setItem('jl_list',JSON.stringify(ls));
+    // 静态托管/离线：按顺序分配（7 栋填满 -> 1,2,3...）
+    const ls=JSON.parse(localStorage.getItem('jl_assign')||'null');
+    const base = ls ? ls : ASSIGN.map(x=>[x[0],x[1]]);
+    if(base.some(([n])=>n.toLowerCase()===raw.toLowerCase())){ alert('这个名字已经有人领了'); return; }
+    const used=new Set(base.map(([,i])=>i));
+    const idx=nextFreeIndex(used);
+    base.push([raw,idx]);
+    localStorage.setItem('jl_assign',JSON.stringify(base));
+    ASSIGN=base; RESIDENTS=buildResidents(ASSIGN);
+    const h=roomOfIndex(idx);
+    me={name:raw,b:h.b,u:h.u,f:h.f,r:h.r,no:h.no};
     const box=document.getElementById('sample'); box.innerHTML='';
     const cnt=document.getElementById('cnt'); if(cnt) cnt.textContent='· '+RESIDENTS.length+' 户';
-  RESIDENTS.slice().reverse().forEach(([n,no])=>{const d=document.createElement('div');d.className='item';
+    RESIDENTS.slice().reverse().forEach(([n,no])=>{const d=document.createElement('div');d.className='item';
       d.innerHTML='<span>'+n+'</span><span>'+no+'</span>';box.appendChild(d);});
   }
   document.getElementById('no').textContent=me.no;
@@ -223,7 +251,7 @@ let RESIDENTS=[];
 async function loadResidents(){
   try{
     const r=await fetch('/api/residents'); const d=await r.json();
-    RESIDENTS=(d.list||[]).slice();
+    RESIDENTS=(d.list||[]).map(([n,no])=>[n,no]);
   }catch(e){ RESIDENTS=JSON.parse(localStorage.getItem('jl_list')||'null')||[["天灵珠","10-2-1402"],["sxdsd","10-1-0604"]]; }
   const box=document.getElementById('sample'); box.innerHTML='';
   const cnt=document.getElementById('cnt'); if(cnt) cnt.textContent='· '+RESIDENTS.length+' 户';
